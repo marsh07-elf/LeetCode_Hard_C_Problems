@@ -1,0 +1,87 @@
+
+int comp(const void *a, const void *b) {
+    return *(int*)a - *(int*)b;
+}
+
+typedef struct {
+    int modulo;
+    int **shmt;
+    int right;
+} Solution;
+
+int findnearestindex(int *vals, int right, int val) {
+    int nearest = 0, left = 0;
+    while (left <= right) {
+        const int mid = left + ((right-left)>>1);
+        if (vals[mid] == val) return mid;
+        else if (vals[mid] < val) {
+            nearest = mid;
+            left = mid+1;
+        }
+        else right = mid-1;
+    }
+    return nearest;
+}
+
+Solution* solutionCreate(int n, int* blacklist, int blacklistSize) {
+    srand(time(NULL));
+    Solution *obj = malloc(sizeof(Solution));
+    obj->modulo = n;
+    if (!blacklistSize) {
+        obj->shmt = NULL;
+    }
+    else {
+        obj->modulo -= blacklistSize;
+        qsort(blacklist, blacklistSize, sizeof(int), comp);
+        obj->shmt = malloc(sizeof(int*)*2);
+        obj->shmt[0] = malloc(sizeof(int)*blacklistSize);
+        obj->shmt[1] = malloc(sizeof(int)*blacklistSize);
+        // shmt[0] is val to shift, shmt[1] is the shmt
+        // set the first shmt vals so later vals can use preceding ones
+        int readi=0, writei=1;
+        // range starting from blacklist[0]
+        obj->shmt[0][0] = blacklist[0];
+        while (readi+1<blacklistSize && blacklist[readi]+1 == blacklist[readi+1]) {
+            ++readi;
+        }
+        // shifts right by readi
+        obj->shmt[1][0] = ++readi;
+        for ( ;readi<blacklistSize;++readi,++writei) {
+            // new range starts at blacklist[readi] (minus prev shmt)
+            obj->shmt[0][writei] = blacklist[readi] - obj->shmt[1][writei-1];
+            // collect ranged shmt
+            while (readi+1<blacklistSize && blacklist[readi]+1 == blacklist[readi+1]) {
+                ++readi;
+            }
+            obj->shmt[1][writei] = readi + 1;
+        }
+        // store the size of the shmt array for binary search
+        obj->right = writei-1;
+    }
+    return obj;
+}
+
+int solutionPick(Solution* obj) {
+    int random = rand()%obj->modulo;
+    if (!obj->shmt) return random;
+    const int index = findnearestindex(obj->shmt[0], obj->right, random);
+    if (obj->shmt[0][index] <= random) return random+obj->shmt[1][index];
+    return random;
+}
+
+void solutionFree(Solution* obj) {
+    if (obj->shmt) {
+        free(obj->shmt[0]);
+        free(obj->shmt[1]);
+        free(obj->shmt);
+    }
+    free(obj);
+}
+
+/**
+ * Your Solution struct will be instantiated and called as such:
+ * Solution* obj = solutionCreate(n, blacklist, blacklistSize);
+ * int param_1 = solutionPick(obj);
+ 
+ * solutionFree(obj);
+*/
